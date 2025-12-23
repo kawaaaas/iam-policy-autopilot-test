@@ -26,7 +26,7 @@ const BUCKET_NAME = process.env.BUCKET_NAME;
 const SECRET_ARN = process.env.SECRET_ARN;
 const EVENT_BUS_NAME = process.env.EVENT_BUS_NAME;
 const BEDROCK_MODEL_ID =
-  process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-sonnet-20240229-v1:0";
+  process.env.BEDROCK_MODEL_ID || "amazon.nova-lite-v1:0";
 const AWS_REGION = process.env.AWS_REGION || "us-east-1";
 
 // AWS SDK クライアントの初期化
@@ -55,13 +55,18 @@ interface LambdaEvent {
 }
 
 /**
- * Bedrock レスポンスのインターフェース
+ * Bedrock レスポンスのインターフェース（Amazon Nova Lite用）
  */
 interface BedrockResponse {
-  content: Array<{ type: string; text: string }>;
+  output: {
+    message: {
+      role: string;
+      content: Array<{ text: string }>;
+    };
+  };
   usage?: {
-    input_tokens: number;
-    output_tokens: number;
+    inputTokens: number;
+    outputTokens: number;
   };
 }
 
@@ -110,7 +115,7 @@ async function getWebhookUrl(): Promise<string> {
 
 /**
  * Bedrock でテキスト処理を行う
- * 要件: 1.1, 1.2, 1.3 - Claude 3 Sonnet モデルを使用
+ * 要件: 1.1, 1.2, 1.3 - Amazon Nova Lite モデルを使用
  *
  * @param inputText 処理対象のテキスト
  * @returns Bedrock の処理結果
@@ -123,16 +128,21 @@ async function processWithBedrock(inputText: string): Promise<{
   console.log(`使用モデル: ${BEDROCK_MODEL_ID}`);
 
   try {
-    // Claude 3 Sonnet 用のリクエストボディ
+    // Amazon Nova Lite 用のリクエストボディ
     const requestBody = {
-      anthropic_version: "bedrock-2023-05-31",
-      max_tokens: 1000,
       messages: [
         {
           role: "user",
-          content: `以下のテキストを要約してください:\n\n${inputText}`,
+          content: [
+            {
+              text: `以下のテキストを要約してください:\n\n${inputText}`,
+            },
+          ],
         },
       ],
+      inferenceConfig: {
+        maxTokens: 1000,
+      },
     };
 
     const command = new InvokeModelCommand({
@@ -150,10 +160,10 @@ async function processWithBedrock(inputText: string): Promise<{
     ) as BedrockResponse;
 
     const responseText =
-      responseBody.content?.[0]?.text || "レスポンスが空です";
+      responseBody.output?.message?.content?.[0]?.text || "レスポンスが空です";
     const usage = {
-      inputTokens: responseBody.usage?.input_tokens || 0,
-      outputTokens: responseBody.usage?.output_tokens || 0,
+      inputTokens: responseBody.usage?.inputTokens || 0,
+      outputTokens: responseBody.usage?.outputTokens || 0,
     };
 
     console.log("Bedrock 処理が正常に完了しました");
