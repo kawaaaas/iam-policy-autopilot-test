@@ -1,0 +1,20 @@
+{
+  "name": "sqs-dynamodb-processor",
+  "version": "1.0.0",
+  "description": "SQS メッセージを受信して DynamoDB に保存する Lambda 関数",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.957.0",
+    "@aws-sdk/lib-dynamodb": "^3.957.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3"
+  }
+}
