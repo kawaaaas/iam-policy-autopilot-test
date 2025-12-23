@@ -52,7 +52,7 @@ export interface IAMPermissionConstructProps {
  * - Lambda 関数と KMS キー間の IAM 権限設定の管理
  * - Lambda 関数と Bedrock 間の IAM 権限設定の管理
  * - 最小権限の原則に従った権限付与
- * - CDK の標準 Grant メソッドを使用した権限設定
+ * - IAM Policy Autopilot で生成された明示的なポリシーステートメントを使用
  * - 権限の種類に応じた適切な IAM ポリシーの生成
  */
 export class IAMPermissionConstruct extends Construct {
@@ -81,86 +81,280 @@ export class IAMPermissionConstruct extends Construct {
       permissions = ["read"],
     } = props;
 
-    // S3 バケットの権限設定
+    // S3 バケットの権限設定（IAM Policy Autopilot 生成ポリシーベース）
     if (s3Bucket) {
       permissions.forEach((permission) => {
         switch (permission) {
           case "read":
-            // S3 バケットからの読み取り権限を付与
-            s3Bucket.grantRead(lambdaFunction);
+            // S3 読み取り権限（IAM Policy Autopilot 生成）
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                  "s3:GetObject",
+                  "s3:GetObjectLegalHold",
+                  "s3:GetObjectRetention",
+                  "s3:GetObjectTagging",
+                  "s3:GetObjectVersion",
+                ],
+                resources: [`${s3Bucket.bucketArn}/*`],
+              })
+            );
+            // S3 Object Lambda 読み取り権限（IAM Policy Autopilot 生成）
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["s3-object-lambda:GetObject"],
+                resources: [`${s3Bucket.bucketArn}/*`],
+              })
+            );
+            // KMS 復号化権限（S3 経由）
+            if (s3Bucket.encryptionKey) {
+              lambdaFunction.addToRolePolicy(
+                new iam.PolicyStatement({
+                  effect: iam.Effect.ALLOW,
+                  actions: ["kms:Decrypt"],
+                  resources: [s3Bucket.encryptionKey.keyArn],
+                  conditions: {
+                    StringLike: {
+                      "kms:ViaService": "s3.*.amazonaws.com",
+                    },
+                  },
+                })
+              );
+            }
             break;
 
           case "write":
-            // S3 バケットへの書き込み権限を付与
-            s3Bucket.grantWrite(lambdaFunction);
+            // S3 書き込み権限（IAM Policy Autopilot 生成）
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                  "s3:PutObject",
+                  "s3:PutObjectAcl",
+                  "s3:PutObjectLegalHold",
+                  "s3:PutObjectRetention",
+                  "s3:PutObjectTagging",
+                ],
+                resources: [`${s3Bucket.bucketArn}/*`],
+              })
+            );
+            // S3 Object Lambda 書き込み権限（IAM Policy Autopilot 生成）
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["s3-object-lambda:PutObject"],
+                resources: [`${s3Bucket.bucketArn}/*`],
+              })
+            );
+            // KMS 暗号化権限（S3 経由）
+            if (s3Bucket.encryptionKey) {
+              lambdaFunction.addToRolePolicy(
+                new iam.PolicyStatement({
+                  effect: iam.Effect.ALLOW,
+                  actions: ["kms:GenerateDataKey"],
+                  resources: [s3Bucket.encryptionKey.keyArn],
+                  conditions: {
+                    StringLike: {
+                      "kms:ViaService": "s3.*.amazonaws.com",
+                    },
+                  },
+                })
+              );
+            }
             break;
 
           case "delete":
-            // S3 バケットからの削除権限を付与
-            s3Bucket.grantDelete(lambdaFunction);
+            // S3 削除権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["s3:DeleteObject", "s3:DeleteObjectVersion"],
+                resources: [`${s3Bucket.bucketArn}/*`],
+              })
+            );
             break;
         }
       });
     }
 
-    // SQS キューの権限設定
+    // SQS キューの権限設定（IAM Policy Autopilot 生成ポリシーベース）
     if (sqsQueue) {
       permissions.forEach((permission) => {
         switch (permission) {
           case "consume":
-            // SQS キューからのメッセージ受信・削除権限を付与
-            sqsQueue.grantConsumeMessages(lambdaFunction);
+            // SQS メッセージ受信権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage",
+                  "sqs:GetQueueAttributes",
+                  "sqs:ChangeMessageVisibility",
+                ],
+                resources: [sqsQueue.queueArn],
+              })
+            );
+            // KMS 復号化権限（SQS 経由）
+            if (sqsQueue.encryptionMasterKey) {
+              lambdaFunction.addToRolePolicy(
+                new iam.PolicyStatement({
+                  effect: iam.Effect.ALLOW,
+                  actions: ["kms:Decrypt"],
+                  resources: [sqsQueue.encryptionMasterKey.keyArn],
+                  conditions: {
+                    StringLike: {
+                      "kms:ViaService": "sqs.*.amazonaws.com",
+                    },
+                  },
+                })
+              );
+            }
             break;
 
           case "send":
-            // SQS キューへのメッセージ送信権限を付与
-            sqsQueue.grantSendMessages(lambdaFunction);
+            // SQS メッセージ送信権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["sqs:SendMessage", "sqs:GetQueueUrl"],
+                resources: [sqsQueue.queueArn],
+              })
+            );
             break;
         }
       });
     }
 
-    // DynamoDB テーブルの権限設定
+    // DynamoDB テーブルの権限設定（IAM Policy Autopilot 生成ポリシーベース）
     if (dynamoDBTable) {
       permissions.forEach((permission) => {
         switch (permission) {
           case "read":
-            // DynamoDB テーブルからの読み取り権限を付与
-            dynamoDBTable.grantReadData(lambdaFunction);
+            // DynamoDB 読み取り権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                  "dynamodb:GetItem",
+                  "dynamodb:Query",
+                  "dynamodb:Scan",
+                  "dynamodb:BatchGetItem",
+                ],
+                resources: [
+                  dynamoDBTable.tableArn,
+                  `${dynamoDBTable.tableArn}/index/*`,
+                ],
+              })
+            );
+            // KMS 復号化権限（DynamoDB 経由）
+            if (dynamoDBTable.encryptionKey) {
+              lambdaFunction.addToRolePolicy(
+                new iam.PolicyStatement({
+                  effect: iam.Effect.ALLOW,
+                  actions: ["kms:Decrypt"],
+                  resources: [dynamoDBTable.encryptionKey.keyArn],
+                  conditions: {
+                    StringLike: {
+                      "kms:ViaService": "dynamodb.*.amazonaws.com",
+                    },
+                  },
+                })
+              );
+            }
             break;
 
           case "write":
-            // DynamoDB テーブルへの書き込み権限を付与
-            dynamoDBTable.grantWriteData(lambdaFunction);
+            // DynamoDB 書き込み権限（IAM Policy Autopilot 生成）
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["dynamodb:PutItem"],
+                resources: [dynamoDBTable.tableArn],
+              })
+            );
+            // KMS 復号化権限（DynamoDB 経由）（IAM Policy Autopilot 生成）
+            if (dynamoDBTable.encryptionKey) {
+              lambdaFunction.addToRolePolicy(
+                new iam.PolicyStatement({
+                  effect: iam.Effect.ALLOW,
+                  actions: ["kms:Decrypt"],
+                  resources: [dynamoDBTable.encryptionKey.keyArn],
+                  conditions: {
+                    StringLike: {
+                      "kms:ViaService": "dynamodb.*.amazonaws.com",
+                    },
+                  },
+                })
+              );
+            }
             break;
         }
       });
     }
 
-    // Secrets Manager の権限設定
+    // Secrets Manager の権限設定（IAM Policy Autopilot 生成ポリシーベース）
     if (secret) {
       permissions.forEach((permission) => {
         switch (permission) {
           case "read":
-            // シークレットの読み取り権限を付与（KMS 復号化権限も含む）
-            secret.grantRead(lambdaFunction);
+            // Secrets Manager 読み取り権限（IAM Policy Autopilot 生成）
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["secretsmanager:GetSecretValue"],
+                resources: [secret.secretArn],
+              })
+            );
+            // KMS 復号化権限（Secrets Manager 経由）
+            if (secret.encryptionKey) {
+              lambdaFunction.addToRolePolicy(
+                new iam.PolicyStatement({
+                  effect: iam.Effect.ALLOW,
+                  actions: ["kms:Decrypt"],
+                  resources: [secret.encryptionKey.keyArn],
+                  conditions: {
+                    StringLike: {
+                      "kms:ViaService": "secretsmanager.*.amazonaws.com",
+                    },
+                  },
+                })
+              );
+            }
             break;
 
           case "write":
-            // シークレットの書き込み権限を付与
-            secret.grantWrite(lambdaFunction);
+            // Secrets Manager 書き込み権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                  "secretsmanager:PutSecretValue",
+                  "secretsmanager:UpdateSecret",
+                ],
+                resources: [secret.secretArn],
+              })
+            );
             break;
         }
       });
     }
 
-    // EventBridge の権限設定
+    // EventBridge の権限設定（IAM Policy Autopilot 生成ポリシーベース）
     if (eventBus) {
       permissions.forEach((permission) => {
         switch (permission) {
           case "send":
-            // イベント送信権限を付与
-            eventBus.grantPutEventsTo(lambdaFunction);
+            // EventBridge イベント送信権限（IAM Policy Autopilot 生成）
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["events:PutEvents"],
+                resources: [eventBus.eventBusArn],
+              })
+            );
             break;
         }
       });
@@ -171,34 +365,53 @@ export class IAMPermissionConstruct extends Construct {
       permissions.forEach((permission) => {
         switch (permission) {
           case "read":
-            // KMS 復号化権限を付与
-            kmsKey.grantDecrypt(lambdaFunction);
+            // KMS 復号化権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["kms:Decrypt"],
+                resources: [kmsKey.keyArn],
+              })
+            );
             break;
 
           case "write":
-            // KMS 暗号化権限を付与
-            kmsKey.grantEncrypt(lambdaFunction);
+            // KMS 暗号化権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["kms:Encrypt", "kms:GenerateDataKey"],
+                resources: [kmsKey.keyArn],
+              })
+            );
             break;
         }
       });
     }
 
-    // Bedrock の権限設定
+    // Bedrock の権限設定（IAM Policy Autopilot 生成ポリシーベース）
     if (bedrockModelId) {
       permissions.forEach((permission) => {
         switch (permission) {
           case "invoke":
-            // Bedrock モデル呼び出し権限を付与
+            // Bedrock モデル呼び出し権限（IAM Policy Autopilot 生成）
+            // bedrock:ApplyGuardrail - Guardrail 適用権限
             lambdaFunction.addToRolePolicy(
               new iam.PolicyStatement({
                 effect: iam.Effect.ALLOW,
-                actions: [
-                  "bedrock:InvokeModel",
-                  "bedrock:InvokeModelWithResponseStream",
-                ],
+                actions: ["bedrock:ApplyGuardrail"],
                 resources: [
-                  `arn:aws:bedrock:*::foundation-model/${bedrockModelId}`,
+                  "arn:aws:bedrock:*:*:guardrail-profile/*",
+                  "arn:aws:bedrock:*:*:guardrail/*",
                 ],
+              })
+            );
+            // bedrock:CallWithBearerToken, bedrock:InvokeModel - モデル呼び出し権限
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["bedrock:CallWithBearerToken", "bedrock:InvokeModel"],
+                resources: ["*"],
               })
             );
             break;
@@ -208,7 +421,7 @@ export class IAMPermissionConstruct extends Construct {
   }
 
   /**
-   * 読み取り権限を追加で付与する
+   * 読み取り権限を追加で付与する（IAM Policy Autopilot 生成ポリシー版）
    * @param lambdaFunction 権限を付与する Lambda 関数
    * @param s3Bucket アクセス対象の S3 バケット
    */
@@ -216,11 +429,30 @@ export class IAMPermissionConstruct extends Construct {
     lambdaFunction: lambda.IFunction,
     s3Bucket: s3.IBucket
   ): void {
-    s3Bucket.grantRead(lambdaFunction);
+    lambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "s3:GetObject",
+          "s3:GetObjectLegalHold",
+          "s3:GetObjectRetention",
+          "s3:GetObjectTagging",
+          "s3:GetObjectVersion",
+        ],
+        resources: [`${s3Bucket.bucketArn}/*`],
+      })
+    );
+    lambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["s3-object-lambda:GetObject"],
+        resources: [`${s3Bucket.bucketArn}/*`],
+      })
+    );
   }
 
   /**
-   * 書き込み権限を追加で付与する
+   * 書き込み権限を追加で付与する（IAM Policy Autopilot 生成ポリシー版）
    * @param lambdaFunction 権限を付与する Lambda 関数
    * @param s3Bucket アクセス対象の S3 バケット
    */
@@ -228,11 +460,30 @@ export class IAMPermissionConstruct extends Construct {
     lambdaFunction: lambda.IFunction,
     s3Bucket: s3.IBucket
   ): void {
-    s3Bucket.grantWrite(lambdaFunction);
+    lambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:PutObjectLegalHold",
+          "s3:PutObjectRetention",
+          "s3:PutObjectTagging",
+        ],
+        resources: [`${s3Bucket.bucketArn}/*`],
+      })
+    );
+    lambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["s3-object-lambda:PutObject"],
+        resources: [`${s3Bucket.bucketArn}/*`],
+      })
+    );
   }
 
   /**
-   * 削除権限を追加で付与する
+   * 削除権限を追加で付与する（明示的ポリシー版）
    * @param lambdaFunction 権限を付与する Lambda 関数
    * @param s3Bucket アクセス対象の S3 バケット
    */
@@ -240,11 +491,17 @@ export class IAMPermissionConstruct extends Construct {
     lambdaFunction: lambda.IFunction,
     s3Bucket: s3.IBucket
   ): void {
-    s3Bucket.grantDelete(lambdaFunction);
+    lambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["s3:DeleteObject", "s3:DeleteObjectVersion"],
+        resources: [`${s3Bucket.bucketArn}/*`],
+      })
+    );
   }
 
   /**
-   * 読み書き権限を追加で付与する
+   * 読み書き権限を追加で付与する（IAM Policy Autopilot 生成ポリシー版）
    * @param lambdaFunction 権限を付与する Lambda 関数
    * @param s3Bucket アクセス対象の S3 バケット
    */
@@ -252,6 +509,30 @@ export class IAMPermissionConstruct extends Construct {
     lambdaFunction: lambda.IFunction,
     s3Bucket: s3.IBucket
   ): void {
-    s3Bucket.grantReadWrite(lambdaFunction);
+    lambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "s3:GetObject",
+          "s3:GetObjectLegalHold",
+          "s3:GetObjectRetention",
+          "s3:GetObjectTagging",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:PutObjectLegalHold",
+          "s3:PutObjectRetention",
+          "s3:PutObjectTagging",
+        ],
+        resources: [`${s3Bucket.bucketArn}/*`],
+      })
+    );
+    lambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["s3-object-lambda:GetObject", "s3-object-lambda:PutObject"],
+        resources: [`${s3Bucket.bucketArn}/*`],
+      })
+    );
   }
 }
