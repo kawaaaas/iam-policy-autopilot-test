@@ -1,6 +1,10 @@
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as events from "aws-cdk-lib/aws-events";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as kms from "aws-cdk-lib/aws-kms";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 
@@ -20,8 +24,20 @@ export interface IAMPermissionConstructProps {
   /** アクセス対象の DynamoDB テーブル（オプション） */
   dynamoDBTable?: dynamodb.ITable;
 
+  /** アクセス対象の Secrets Manager シークレット（オプション） */
+  secret?: secretsmanager.ISecret;
+
+  /** アクセス対象の EventBridge イベントバス（オプション） */
+  eventBus?: events.IEventBus;
+
+  /** アクセス対象の KMS キー（オプション） */
+  kmsKey?: kms.IKey;
+
+  /** Bedrock モデル ID（オプション、指定時に Bedrock 権限を付与） */
+  bedrockModelId?: string;
+
   /** 付与する権限の種類（デフォルト: ["read"]） */
-  permissions?: ("read" | "write" | "delete" | "consume" | "send")[];
+  permissions?: ("read" | "write" | "delete" | "consume" | "send" | "invoke")[];
 }
 
 /**
@@ -31,6 +47,10 @@ export interface IAMPermissionConstructProps {
  * - Lambda 関数と S3 バケット間の IAM 権限設定の管理
  * - Lambda 関数と SQS キュー間の IAM 権限設定の管理
  * - Lambda 関数と DynamoDB テーブル間の IAM 権限設定の管理
+ * - Lambda 関数と Secrets Manager 間の IAM 権限設定の管理
+ * - Lambda 関数と EventBridge 間の IAM 権限設定の管理
+ * - Lambda 関数と KMS キー間の IAM 権限設定の管理
+ * - Lambda 関数と Bedrock 間の IAM 権限設定の管理
  * - 最小権限の原則に従った権限付与
  * - CDK の標準 Grant メソッドを使用した権限設定
  * - 権限の種類に応じた適切な IAM ポリシーの生成
@@ -54,6 +74,10 @@ export class IAMPermissionConstruct extends Construct {
       s3Bucket,
       sqsQueue,
       dynamoDBTable,
+      secret,
+      eventBus,
+      kmsKey,
+      bedrockModelId,
       permissions = ["read"],
     } = props;
 
@@ -108,6 +132,75 @@ export class IAMPermissionConstruct extends Construct {
           case "write":
             // DynamoDB テーブルへの書き込み権限を付与
             dynamoDBTable.grantWriteData(lambdaFunction);
+            break;
+        }
+      });
+    }
+
+    // Secrets Manager の権限設定
+    if (secret) {
+      permissions.forEach((permission) => {
+        switch (permission) {
+          case "read":
+            // シークレットの読み取り権限を付与（KMS 復号化権限も含む）
+            secret.grantRead(lambdaFunction);
+            break;
+
+          case "write":
+            // シークレットの書き込み権限を付与
+            secret.grantWrite(lambdaFunction);
+            break;
+        }
+      });
+    }
+
+    // EventBridge の権限設定
+    if (eventBus) {
+      permissions.forEach((permission) => {
+        switch (permission) {
+          case "send":
+            // イベント送信権限を付与
+            eventBus.grantPutEventsTo(lambdaFunction);
+            break;
+        }
+      });
+    }
+
+    // KMS キーの権限設定
+    if (kmsKey) {
+      permissions.forEach((permission) => {
+        switch (permission) {
+          case "read":
+            // KMS 復号化権限を付与
+            kmsKey.grantDecrypt(lambdaFunction);
+            break;
+
+          case "write":
+            // KMS 暗号化権限を付与
+            kmsKey.grantEncrypt(lambdaFunction);
+            break;
+        }
+      });
+    }
+
+    // Bedrock の権限設定
+    if (bedrockModelId) {
+      permissions.forEach((permission) => {
+        switch (permission) {
+          case "invoke":
+            // Bedrock モデル呼び出し権限を付与
+            lambdaFunction.addToRolePolicy(
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                  "bedrock:InvokeModel",
+                  "bedrock:InvokeModelWithResponseStream",
+                ],
+                resources: [
+                  `arn:aws:bedrock:*::foundation-model/${bedrockModelId}`,
+                ],
+              })
+            );
             break;
         }
       });

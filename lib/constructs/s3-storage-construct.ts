@@ -1,4 +1,5 @@
 import * as cdk from "aws-cdk-lib";
+import * as kms from "aws-cdk-lib/aws-kms";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 
@@ -12,11 +13,17 @@ export interface S3StorageConstructProps {
   /** 暗号化設定（デフォルト: S3_MANAGED） */
   encryption?: s3.BucketEncryption;
 
+  /** カスタマーマネージド KMS キー（オプション、encryption が KMS の場合に使用） */
+  encryptionKey?: kms.IKey;
+
   /** 削除ポリシー（デフォルト: DESTROY） */
   removalPolicy?: cdk.RemovalPolicy;
 
   /** パブリックアクセスブロック設定（デフォルト: BLOCK_ALL） */
   blockPublicAccess?: s3.BlockPublicAccess;
+
+  /** バケット内のオブジェクトを自動削除するかどうか（デフォルト: false） */
+  autoDeleteObjects?: boolean;
 }
 
 /**
@@ -38,16 +45,20 @@ export class S3StorageConstruct extends Construct {
     const {
       bucketName,
       encryption = s3.BucketEncryption.S3_MANAGED,
+      encryptionKey,
       removalPolicy = cdk.RemovalPolicy.DESTROY,
       blockPublicAccess = s3.BlockPublicAccess.BLOCK_ALL,
+      autoDeleteObjects = false,
     } = props || {};
 
     // S3 バケットの作成
     this.bucket = new s3.Bucket(this, "Bucket", {
       bucketName,
       encryption,
+      encryptionKey,
       removalPolicy,
       blockPublicAccess,
+      autoDeleteObjects,
     });
 
     // タグの追加（管理とコスト追跡のため）
