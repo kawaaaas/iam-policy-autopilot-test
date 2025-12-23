@@ -1,0 +1,150 @@
+{
+  "description": "Standard 環境テスト用のサンプル SQS メッセージ",
+  "singleMessage": {
+    "messageId": "12345678-1234-1234-1234-123456789012",
+    "body": "{\"action\":\"process\",\"data\":{\"key\":\"value\",\"timestamp\":\"2024-12-23T10:00:00.000Z\"}}",
+    "attributes": {
+      "SentTimestamp": "1703325600000"
+    },
+    "messageAttributes": {},
+    "md5OfBody": "abc123def456",
+    "eventSource": "aws:sqs",
+    "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue"
+  },
+  "batchMessages": [
+    {
+      "messageId": "msg-001",
+      "body": "{\"action\":\"create\",\"data\":{\"id\":1,\"name\":\"テストアイテム1\"}}",
+      "attributes": {
+        "SentTimestamp": "1703325600000"
+      },
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue"
+    },
+    {
+      "messageId": "msg-002",
+      "body": "{\"action\":\"update\",\"data\":{\"id\":2,\"name\":\"テストアイテム2\"}}",
+      "attributes": {
+        "SentTimestamp": "1703325601000"
+      },
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue"
+    },
+    {
+      "messageId": "msg-003",
+      "body": "{\"action\":\"delete\",\"data\":{\"id\":3}}",
+      "attributes": {
+        "SentTimestamp": "1703325602000"
+      },
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue"
+    }
+  ],
+  "lambdaSqsEvent": {
+    "description": "Lambda 関数が受け取る SQS イベント形式（テスト用）",
+    "Records": [
+      {
+        "messageId": "12345678-1234-1234-1234-123456789012",
+        "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+        "body": "{\"action\":\"process\",\"data\":{\"key\":\"value\",\"timestamp\":\"2024-12-23T10:00:00.000Z\"}}",
+        "attributes": {
+          "ApproximateReceiveCount": "1",
+          "SentTimestamp": "1703325600000",
+          "SenderId": "123456789012",
+          "ApproximateFirstReceiveTimestamp": "1703325600100"
+        },
+        "messageAttributes": {},
+        "md5OfBody": "abc123def456",
+        "eventSource": "aws:sqs",
+        "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue",
+        "awsRegion": "ap-northeast-1"
+      }
+    ]
+  },
+  "lambdaSqsBatchEvent": {
+    "description": "Lambda 関数が受け取るバッチ SQS イベント形式（テスト用）",
+    "Records": [
+      {
+        "messageId": "msg-batch-001",
+        "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+        "body": "{\"action\":\"create\",\"data\":{\"id\":1,\"name\":\"バッチテスト1\"}}",
+        "attributes": {
+          "ApproximateReceiveCount": "1",
+          "SentTimestamp": "1703325600000",
+          "SenderId": "123456789012",
+          "ApproximateFirstReceiveTimestamp": "1703325600100"
+        },
+        "messageAttributes": {},
+        "md5OfBody": "batch001hash",
+        "eventSource": "aws:sqs",
+        "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue",
+        "awsRegion": "ap-northeast-1"
+      },
+      {
+        "messageId": "msg-batch-002",
+        "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0b...",
+        "body": "{\"action\":\"update\",\"data\":{\"id\":2,\"name\":\"バッチテスト2\"}}",
+        "attributes": {
+          "ApproximateReceiveCount": "1",
+          "SentTimestamp": "1703325601000",
+          "SenderId": "123456789012",
+          "ApproximateFirstReceiveTimestamp": "1703325601100"
+        },
+        "messageAttributes": {},
+        "md5OfBody": "batch002hash",
+        "eventSource": "aws:sqs",
+        "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue",
+        "awsRegion": "ap-northeast-1"
+      },
+      {
+        "messageId": "msg-batch-003",
+        "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0c...",
+        "body": "{\"action\":\"delete\",\"data\":{\"id\":3}}",
+        "attributes": {
+          "ApproximateReceiveCount": "1",
+          "SentTimestamp": "1703325602000",
+          "SenderId": "123456789012",
+          "ApproximateFirstReceiveTimestamp": "1703325602100"
+        },
+        "messageAttributes": {},
+        "md5OfBody": "batch003hash",
+        "eventSource": "aws:sqs",
+        "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue",
+        "awsRegion": "ap-northeast-1"
+      }
+    ]
+  },
+  "errorTestMessages": {
+    "description": "エラーハンドリングテスト用のメッセージ",
+    "invalidJsonBody": {
+      "messageId": "error-001",
+      "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0d...",
+      "body": "invalid json {",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1703325700000"
+      },
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue",
+      "awsRegion": "ap-northeast-1"
+    },
+    "emptyBody": {
+      "messageId": "error-002",
+      "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0e...",
+      "body": "",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1703325700000"
+      },
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:ap-northeast-1:123456789012:StandardTestQueue",
+      "awsRegion": "ap-northeast-1"
+    }
+  },
+  "awsCliCommands": {
+    "sendSingleMessage": "aws sqs send-message --queue-url <QUEUE_URL> --message-body '{\"action\":\"process\",\"data\":{\"key\":\"value\"}}'",
+    "sendBatchMessages": "aws sqs send-message-batch --queue-url <QUEUE_URL> --entries '[{\"Id\":\"1\",\"MessageBody\":\"{\\\"action\\\":\\\"create\\\",\\\"data\\\":{\\\"id\\\":1}}\"},{\"Id\":\"2\",\"MessageBody\":\"{\\\"action\\\":\\\"update\\\",\\\"data\\\":{\\\"id\\\":2}}\"}]'",
+    "receiveMessages": "aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 10",
+    "checkDlq": "aws sqs receive-message --queue-url <DLQ_URL> --max-number-of-messages 10"
+  }
+}
