@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib/core";
+import { ComplexIamTestStack } from "../lib/complex-iam-test-stack";
 import { SimpleIamTestStack } from "../lib/simple-iam-test-stack";
 import { StandardIamTestStack } from "../lib/standard-iam-test-stack";
 
@@ -23,4 +24,10 @@ new SimpleIamTestStack(app, "SimpleIamTestStack", {
 new StandardIamTestStack(app, "StandardIamTestStack", {
   // 環境に依存しないスタック（任意のリージョンにデプロイ可能）
   // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+});
+
+// Complex 環境: Bedrock + KMS 暗号化 S3 + Secrets Manager + EventBridge の統合
+new ComplexIamTestStack(app, "ComplexIamTestStack", {
+  // Bedrock を使用するため、us-east-1 リージョンを推奨
+  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' },
 });
