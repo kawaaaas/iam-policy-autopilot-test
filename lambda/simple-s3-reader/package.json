@@ -1,0 +1,20 @@
+{
+  "name": "simple-s3-reader",
+  "version": "1.0.0",
+  "description": "S3からJSONファイルを読み込むシンプルなLambda関数",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.957.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3"
+  },
+  "scripts": {
+    "build": "tsc index.ts --target es2022 --module commonjs --outDir dist",
+    "clean": "rm -rf dist"
+  }
+}
