@@ -1,0 +1,13 @@
+{
+  "name": "complex-bedrock-processor",
+  "version": "1.0.0",
+  "description": "Bedrock、S3、Secrets Manager、EventBridge を統合する Lambda 関数",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.957.0",
+    "@aws-sdk/client-s3": "^3.957.0",
+    "@aws-sdk/client-secrets-manager": "^3.957.0",
+    "@aws-sdk/client-eventbridge": "^3.957.0"
+  }
+}
