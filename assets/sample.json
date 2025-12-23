@@ -1,0 +1,9 @@
+{
+  "message": "Hello from S3!",
+  "timestamp": "2024-12-23T10:00:00Z",
+  "environment": "simple-test",
+  "data": {
+    "key1": "value1",
+    "key2": "value2"
+  }
+}
