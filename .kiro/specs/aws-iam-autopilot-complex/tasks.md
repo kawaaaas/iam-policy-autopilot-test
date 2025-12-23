@@ -6,23 +6,23 @@ Lambda 関数が Bedrock、KMS 暗号化された S3、Secrets Manager、EventBr
 
 ## タスク
 
-- [ ] 1. プロジェクト構造と CDK 初期設定
+- [x] 1. プロジェクト構造と CDK 初期設定
 
   - TypeScript CDK プロジェクトの初期化
   - 必要な依存関係の追加（AWS SDK v3、CDK v2、全サービス用）
   - プロジェクトディレクトリ構造の作成
   - _要件: 8.1, 8.3_
 
-- [ ] 2. KMS キーと S3 バケットの作成
+- [x] 2. KMS キーと S3 バケットの作成
 
-  - [ ] 2.1 S3 用 KMS キーの作成
+  - [x] 2.1 S3 用 KMS キーの作成
 
     - CDK でカスタマーマネージド KMS キー作成
     - キーローテーション有効化
     - 適切なキーポリシー設定
     - _要件: 2.2, 5.2_
 
-  - [ ] 2.2 KMS 暗号化 S3 バケットの作成
+  - [x] 2.2 KMS 暗号化 S3 バケットの作成
 
     - CDK で S3 バケットリソース定義
     - カスタマーマネージド KMS 暗号化設定
@@ -33,15 +33,15 @@ Lambda 関数が Bedrock、KMS 暗号化された S3、Secrets Manager、EventBr
     - **プロパティ 2: KMS 暗号化の透明性**（S3 部分）
     - **検証対象: 要件 2.4, 2.5**
 
-- [ ] 3. Secrets Manager と KMS 設定
+- [x] 3. Secrets Manager と KMS 設定
 
-  - [ ] 3.1 Secrets 用 KMS キーの作成
+  - [x] 3.1 Secrets 用 KMS キーの作成
 
     - CDK で別のカスタマーマネージド KMS キー作成
     - S3 用とは独立したキー管理
     - _要件: 3.2, 5.2_
 
-  - [ ] 3.2 暗号化された Secrets Manager の作成
+  - [x] 3.2 暗号化された Secrets Manager の作成
 
     - CDK で Secrets Manager リソース定義
     - ダミー webhook URL の設定
@@ -52,9 +52,9 @@ Lambda 関数が Bedrock、KMS 暗号化された S3、Secrets Manager、EventBr
     - **プロパティ 3: シークレット取得の安全性**
     - **検証対象: 要件 3.3, 3.4**
 
-- [ ] 4. EventBridge カスタムバスの作成
+- [x] 4. EventBridge カスタムバスの作成
 
-  - [ ] 4.1 CDK でカスタム EventBridge バス作成
+  - [x] 4.1 CDK でカスタム EventBridge バス作成
 
     - カスタムイベントバスの定義
     - デフォルトバスとの分離確認
@@ -64,30 +64,30 @@ Lambda 関数が Bedrock、KMS 暗号化された S3、Secrets Manager、EventBr
     - **プロパティ 4: イベント送信の確実性**
     - **検証対象: 要件 4.2, 4.3**
 
-- [ ] 5. Lambda 関数の実装
+- [x] 5. Lambda 関数の実装
 
-  - [ ] 5.1 Bedrock 統合の実装
+  - [x] 5.1 Bedrock 統合の実装
 
     - Node.js 22.x 用の Bedrock Runtime Client 実装
     - Claude 3 Sonnet モデルの呼び出し
     - テキスト処理とレスポンス解析
     - _要件: 1.1, 1.2, 1.3_
 
-  - [ ] 5.2 Secrets Manager 統合の実装
+  - [x] 5.2 Secrets Manager 統合の実装
 
     - AWS SDK v3 を使用した GetSecretValue 実装
     - KMS 復号化の透明な処理
     - webhook URL 取得と使用
     - _要件: 3.3, 3.4_
 
-  - [ ] 5.3 S3 統合の実装
+  - [x] 5.3 S3 統合の実装
 
     - AWS SDK v3 を使用した S3 PutObject 実装
     - KMS 暗号化の透明な処理
     - 処理結果の構造化保存
     - _要件: 1.4, 2.4, 2.5_
 
-  - [ ] 5.4 EventBridge 統合の実装
+  - [x] 5.4 EventBridge 統合の実装
 
     - AWS SDK v3 を使用した PutEvents 実装
     - カスタムイベント形式の定義
@@ -99,7 +99,7 @@ Lambda 関数が Bedrock、KMS 暗号化された S3、Secrets Manager、EventBr
     - **プロパティ 1: エンドツーエンド処理の完全性**
     - **検証対象: 要件 1.4, 6.5**
 
-  - [ ] 5.6 統合エラーハンドリングの実装
+  - [x] 5.6 統合エラーハンドリングの実装
 
     - 各サービス固有のエラー処理
     - 部分実行時のロールバック処理
@@ -110,16 +110,16 @@ Lambda 関数が Bedrock、KMS 暗号化された S3、Secrets Manager、EventBr
     - **プロパティ 6: エラー時の部分実行防止**
     - **検証対象: 要件 1.5, 6.3**
 
-- [ ] 6. CDK スタックの統合
+- [x] 6. CDK スタックの統合
 
-  - [ ] 6.1 Lambda 関数リソースの定義
+  - [x] 6.1 Lambda 関数リソースの定義
 
     - CDK で Lambda 関数リソース作成
     - 全サービス用の環境変数設定
     - Node.js 22.x ランタイムとメモリ設定
     - _要件: 5.1, 5.4_
 
-  - [ ] 6.2 複雑な IAM 権限の設定
+  - [x] 6.2 複雑な IAM 権限の設定
 
     - Bedrock 権限の付与
     - S3 と KMS 権限の付与（s3.grantReadWrite）
@@ -131,7 +131,7 @@ Lambda 関数が Bedrock、KMS 暗号化された S3、Secrets Manager、EventBr
     - **プロパティ 5: 権限マトリックスの最小化**
     - **検証対象: 要件 5.3, 7.1, 7.2**
 
-- [ ] 7. チェックポイント - 複雑な統合確認
+- [x] 7. チェックポイント - 複雑な統合確認
 
   - すべてのテストが通ることを確認し、質問があればユーザーに確認する
 
