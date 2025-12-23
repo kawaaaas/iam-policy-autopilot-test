@@ -2,7 +2,7 @@
 
 ## 概要
 
-最も複雑な AWS 環境を構築します。高度な依存関係とセキュアな AI 処理（Lambda → Bedrock + S3 + Secrets Manager + EventBridge + KMS）により、最も複雑な権限付与パターンを実装し、動作確認を行います。
+最も複雑な AWS 環境を構築します。高度な依存関係とセキュアな AI 処理（Lambda → Bedrock + S3 + Secrets Manager + EventBridge + KMS）により、最も複雑な権限付与パターンを実装し、動作確認を行います。**全てのコンポーネントは再利用可能なコンストラクトとして分割実装し、スタックは軽量に保ちます。**
 
 ## 用語集
 
@@ -13,6 +13,12 @@
 - **EventBridge バス**: カスタム EventBridge イベントバス
 - **KMS キー**: AWS KMS カスタマーマネージドキー
 - **CDK スタック**: AWS CDK v2 によるインフラ定義
+- **KMS_Key_Construct**: KMS キーとその設定を管理する再利用可能なコンストラクト
+- **S3_Storage_Construct**: KMS 暗号化 S3 バケットとその設定を管理する再利用可能なコンストラクト
+- **Secrets_Manager_Construct**: Secrets Manager とその設定を管理する再利用可能なコンストラクト
+- **EventBridge_Construct**: EventBridge カスタムバスとその設定を管理する再利用可能なコンストラクト
+- **Lambda_Function_Construct**: Lambda 関数とその設定を管理する再利用可能なコンストラクト
+- **IAM_Permission_Construct**: 複雑な IAM 権限の設定を管理する再利用可能なコンストラクト
 
 ## 要件
 
@@ -112,3 +118,27 @@
 3. プロジェクトは KMS キー管理とクリーンアップ手順を含む
 4. プロジェクトはコスト考慮事項とクリーンアップ手順を含む
 5. プロジェクトは複雑なサービス相互作用のトラブルシューティングガイドを含む
+
+### 要件 9: コンストラクト分割アーキテクチャ
+
+**ユーザーストーリー:** 開発者として、各コンポーネントを再利用可能なコンストラクトとして実装したい。他のプロジェクトでも同じコンポーネントを使用できるようにするため。
+
+#### 受け入れ基準
+
+1. WHEN KMS キーが必要な場合、THE KMS_Key_Construct SHALL 独立して動作し、設定可能な KMS キーを作成する
+2. WHEN KMS 暗号化 S3 バケットが必要な場合、THE S3_Storage_Construct SHALL 指定された KMS キーで暗号化された S3 バケットを作成する
+3. WHEN Secrets Manager が必要な場合、THE Secrets_Manager_Construct SHALL 指定された KMS キーで暗号化されたシークレットを作成する
+4. WHEN EventBridge カスタムバスが必要な場合、THE EventBridge_Construct SHALL 独立して動作し、設定可能なカスタムバスを作成する
+5. WHEN Lambda 関数が必要な場合、THE Lambda_Function_Construct SHALL 独立して動作し、複雑なサービス統合を持つ Lambda 関数を作成する
+6. WHEN 複雑な IAM 権限設定が必要な場合、THE IAM_Permission_Construct SHALL 最小権限の原則に従って複数サービスと暗黙的 KMS 権限を付与する
+
+### 要件 10: スタック軽量化
+
+**ユーザーストーリー:** 開発者として、スタックを軽量に保ちたい。スタックはコンストラクトの組み合わせのみを行い、具体的なリソース設定は各コンストラクトに委譲するため。
+
+#### 受け入れ基準
+
+1. WHEN スタックを定義する場合、THE Stack SHALL 各コンストラクトのインスタンス化と接続のみを行う
+2. WHEN スタックを定義する場合、THE Stack SHALL 具体的な AWS リソースの設定を含まない
+3. THE Stack SHALL 複雑なコンストラクト間の依存関係を明確に管理する
+4. THE Stack SHALL 必要な出力値を外部に公開する

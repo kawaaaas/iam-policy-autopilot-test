@@ -2,7 +2,7 @@
 
 ## 概要
 
-中程度の複雑さを持つ AWS 環境を構築します。複数サービス（Lambda → DynamoDB + SQS）の連携により、より複雑な権限付与パターンを実装し、動作確認を行います。
+中程度の複雑さを持つ AWS 環境を構築します。複数サービス（Lambda → DynamoDB + SQS）の連携により、より複雑な権限付与パターンを実装し、動作確認を行います。**全てのコンポーネントは再利用可能なコンストラクトとして分割実装し、スタックは軽量に保ちます。**
 
 ## 用語集
 
@@ -11,6 +11,11 @@
 - **SQS キュー**: AWS SQS キュー（メッセージ受信用）
 - **CDK スタック**: AWS CDK v2 によるインフラ定義
 - **Grant メソッド**: CDK の標準的な権限付与メソッド
+- **SQS_Queue_Construct**: SQS キューとその設定を管理する再利用可能なコンストラクト
+- **DynamoDB_Table_Construct**: DynamoDB テーブルとその設定を管理する再利用可能なコンストラクト
+- **Lambda_Function_Construct**: Lambda 関数とその設定を管理する再利用可能なコンストラクト
+- **IAM_Permission_Construct**: IAM 権限の設定を管理する再利用可能なコンストラクト
+- **Event_Source_Construct**: SQS と Lambda 間のイベントソースマッピングを管理するコンストラクト
 
 ## 要件
 
@@ -86,3 +91,26 @@
 2. Lambda 関数のコードは複数サービス統合パターンを実証する
 3. プロジェクトにはテスト用のサンプル SQS メッセージが含まれる
 4. プロジェクトにはデプロイとテストの手順が含まれる
+
+### 要件 7: コンストラクト分割アーキテクチャ
+
+**ユーザーストーリー:** 開発者として、各コンポーネントを再利用可能なコンストラクトとして実装したい。他のプロジェクトでも同じコンポーネントを使用できるようにするため。
+
+#### 受け入れ基準
+
+1. WHEN SQS キューが必要な場合、THE SQS_Queue_Construct SHALL 独立して動作し、設定可能な SQS キューと DLQ を作成する
+2. WHEN DynamoDB テーブルが必要な場合、THE DynamoDB_Table_Construct SHALL 独立して動作し、設定可能な DynamoDB テーブルを作成する
+3. WHEN Lambda 関数が必要な場合、THE Lambda_Function_Construct SHALL 独立して動作し、設定可能な Lambda 関数を作成する
+4. WHEN イベントソースマッピングが必要な場合、THE Event_Source_Construct SHALL SQS と Lambda 間の接続を管理する
+5. WHEN IAM 権限設定が必要な場合、THE IAM_Permission_Construct SHALL 最小権限の原則に従って複数サービスの権限を付与する
+
+### 要件 8: スタック軽量化
+
+**ユーザーストーリー:** 開発者として、スタックを軽量に保ちたい。スタックはコンストラクトの組み合わせのみを行い、具体的なリソース設定は各コンストラクトに委譲するため。
+
+#### 受け入れ基準
+
+1. WHEN スタックを定義する場合、THE Stack SHALL 各コンストラクトのインスタンス化と接続のみを行う
+2. WHEN スタックを定義する場合、THE Stack SHALL 具体的な AWS リソースの設定を含まない
+3. THE Stack SHALL 各コンストラクト間の依存関係を明確に管理する
+4. THE Stack SHALL 必要な出力値を外部に公開する

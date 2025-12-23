@@ -2,9 +2,11 @@
 
 ## 概要
 
-最もシンプルな AWS 環境として、Lambda 関数が S3 バケットから JSON ファイルを読み込む構成を実装します。CDK v2 と TypeScript を使用し、標準的な grant メソッドによる権限付与を行います。
+最もシンプルな AWS 環境として、Lambda 関数が S3 バケットから JSON ファイルを読み込む構成を実装します。CDK v2 と TypeScript を使用し、**全てのコンポーネントを再利用可能なコンストラクトとして分割実装**し、標準的な grant メソッドによる権限付与を行います。
 
 ## アーキテクチャ
+
+### 従来のモノリシック構成
 
 ```mermaid
 graph LR
@@ -18,55 +20,179 @@ graph LR
     A -.-> D
 ```
 
+### 新しいコンストラクト分割構成
+
+```mermaid
+graph TB
+    subgraph "軽量スタック"
+        S[IamPolicyAutopilotTestStack]
+    end
+
+    subgraph "S3ストレージコンストラクト"
+        S1[S3StorageConstruct] --> B[S3バケット]
+    end
+
+    subgraph "データデプロイメントコンストラクト"
+        S2[DataDeploymentConstruct] --> C[sample.json]
+    end
+
+    subgraph "Lambda関数コンストラクト"
+        S3[LambdaFunctionConstruct] --> A[Lambda関数]
+    end
+
+    subgraph "IAM権限コンストラクト"
+        S4[IAMPermissionConstruct] --> D[IAM Role/Policy]
+    end
+
+    S --> S1
+    S --> S2
+    S --> S3
+    S --> S4
+
+    S2 --> B
+    A --> B
+    A -.-> D
+```
+
 ### 主要コンポーネント
 
-- **Lambda 関数**: Node.js 22.x、AWS SDK v3 使用
-- **S3 バケット**: デフォルト暗号化（AES256）
-- **IAM ロール**: CDK の s3.grantRead()で自動生成
+- **S3StorageConstruct**: S3 バケット作成と設定管理
+- **DataDeploymentConstruct**: ファイルデプロイメント管理
+- **LambdaFunctionConstruct**: Lambda 関数作成と設定管理
+- **IAMPermissionConstruct**: IAM 権限設定管理
+- **軽量スタック**: コンストラクトの組み合わせのみ
 
 ## コンポーネントと インターフェース
 
-### Lambda 関数
+### S3StorageConstruct
+
+**責任**: S3 バケットの作成と基本設定の管理
 
 ```typescript
-// ハンドラー関数のインターフェース
-export const handler = async (event: any): Promise<any> => {
-  // S3からJSONファイルを読み込み
-  // 内容をコンソールに出力
-  // エラーハンドリング
-};
+interface S3StorageConstructProps {
+  bucketName?: string;
+  encryption?: s3.BucketEncryption;
+  removalPolicy?: cdk.RemovalPolicy;
+  blockPublicAccess?: s3.BlockPublicAccess;
+}
+
+export class S3StorageConstruct extends Construct {
+  public readonly bucket: s3.Bucket;
+
+  constructor(scope: Construct, id: string, props?: S3StorageConstructProps) {
+    // S3バケットの作成と設定
+  }
+}
 ```
 
-**主要な依存関係:**
+### DataDeploymentConstruct
 
-- `@aws-sdk/client-s3`: S3 操作用
-- AWS Lambda Runtime: Node.js 22.x
-
-### S3 バケット
+**責任**: ローカルファイルの S3 バケットへのデプロイメント管理
 
 ```typescript
-// CDKでのS3バケット定義
-const bucket = new s3.Bucket(this, "SimpleTestBucket", {
-  encryption: s3.BucketEncryption.S3_MANAGED,
-  removalPolicy: RemovalPolicy.DESTROY, // 検証用
-});
+interface DataDeploymentConstructProps {
+  targetBucket: s3.IBucket;
+  sourcePath: string;
+  destinationKeyPrefix?: string;
+  prune?: boolean;
+}
+
+export class DataDeploymentConstruct extends Construct {
+  public readonly deployment: s3deploy.BucketDeployment;
+
+  constructor(
+    scope: Construct,
+    id: string,
+    props: DataDeploymentConstructProps
+  ) {
+    // ファイルデプロイメントの設定
+  }
+}
 ```
 
-**設定:**
+### LambdaFunctionConstruct
 
-- 暗号化: AES256（S3 マネージド）
-- アクセス: Lambda 関数のみ
-- サンプルファイル: `sample.json`
-
-### CDK スタック構成
+**責任**: Lambda 関数の作成と基本設定の管理
 
 ```typescript
-export class SimpleIamTestStack extends Stack {
+interface LambdaFunctionConstructProps {
+  functionName?: string;
+  runtime?: lambda.Runtime;
+  handler?: string;
+  code: lambda.Code;
+  environment?: { [key: string]: string };
+  timeout?: cdk.Duration;
+  memorySize?: number;
+}
+
+export class LambdaFunctionConstruct extends Construct {
+  public readonly function: lambda.Function;
+
+  constructor(
+    scope: Construct,
+    id: string,
+    props: LambdaFunctionConstructProps
+  ) {
+    // Lambda関数の作成と設定
+  }
+}
+```
+
+### IAMPermissionConstruct
+
+**責任**: Lambda 関数と S3 バケット間の IAM 権限設定の管理
+
+```typescript
+interface IAMPermissionConstructProps {
+  lambdaFunction: lambda.IFunction;
+  s3Bucket: s3.IBucket;
+  permissions?: ("read" | "write" | "delete")[];
+}
+
+export class IAMPermissionConstruct extends Construct {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: IAMPermissionConstructProps
+  ) {
+    // IAM権限の設定
+  }
+}
+```
+
+### 軽量スタック構成
+
+```typescript
+export class IamPolicyAutopilotTestStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
-    // Lambda関数の作成
-    // S3バケットの作成
-    // 権限付与（s3.grantRead）
-    // サンプルファイルのデプロイ
+    super(scope, id, props);
+
+    // コンストラクトのインスタンス化のみ
+    const s3Storage = new S3StorageConstruct(this, "S3Storage", {
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    const dataDeployment = new DataDeploymentConstruct(this, "DataDeployment", {
+      targetBucket: s3Storage.bucket,
+      sourcePath: "assets",
+      prune: true,
+    });
+
+    const lambdaFunction = new LambdaFunctionConstruct(this, "LambdaFunction", {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: "index.handler",
+      code: lambda.Code.fromAsset("lambda/simple-s3-reader"),
+      environment: {
+        BUCKET_NAME: s3Storage.bucket.bucketName,
+      },
+    });
+
+    const iamPermission = new IAMPermissionConstruct(this, "IAMPermission", {
+      lambdaFunction: lambdaFunction.function,
+      s3Bucket: s3Storage.bucket,
+      permissions: ["read"],
+    });
   }
 }
 ```
@@ -115,6 +241,21 @@ _プロパティは、システムのすべての有効な実行において真�
 
 *任意の*CDK 生成 IAM ポリシーに対して、Lambda 関数は必要最小限の S3 読み取り権限のみを持つ
 **検証対象: 要件 2.4, 3.3**
+
+### プロパティ 4: コンストラクト独立性
+
+*任意の*コンストラクトに対して、必要な依存関係が提供されれば、他のコンストラクトの存在に関係なく正常に動作する
+**検証対象: 要件 6.1, 6.2, 6.3, 6.4**
+
+### プロパティ 5: スタック軽量化
+
+*任意の*スタック定義に対して、スタックはコンストラクトの組み合わせのみを含み、直接的な AWS リソース定義を含まない
+**検証対象: 要件 7.1, 7.2**
+
+### プロパティ 6: 依存関係管理
+
+*任意の*コンストラクト間の依存関係に対して、スタックは適切な順序で依存関係を解決し、必要な出力値を公開する
+**検証対象: 要件 7.3, 7.4**
 
 ## エラーハンドリング
 
