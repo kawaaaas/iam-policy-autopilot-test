@@ -25,8 +25,8 @@ export class ComplexIamTestStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Bedrock モデル ID（Claude 3 Sonnet）
-    const bedrockModelId = "anthropic.claude-3-sonnet-20240229-v1:0";
+    // Bedrock モデル ID（Amazon Nova Lite）
+    const bedrockModelId = "amazon.nova-lite-v1:0";
 
     // S3 用 KMS キーコンストラクトの作成
     const s3KmsKey = new KMSKeyConstruct(this, "S3KmsKey", {
@@ -68,6 +68,7 @@ export class ComplexIamTestStack extends cdk.Stack {
     const eventBridge = new EventBridgeConstruct(this, "EventBridge", {
       eventBusName: "complex-iam-test-bus",
       description: "Complex IAM テスト用カスタムイベントバス",
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // Lambda 関数コンストラクトの作成

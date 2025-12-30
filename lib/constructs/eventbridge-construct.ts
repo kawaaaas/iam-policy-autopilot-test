@@ -1,3 +1,4 @@
+import * as cdk from "aws-cdk-lib";
 import * as events from "aws-cdk-lib/aws-events";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
@@ -15,6 +16,12 @@ export interface EventBridgeConstructProps {
    * イベントバスの説明（オプション）
    */
   readonly description?: string;
+
+  /**
+   * 削除ポリシー
+   * @default cdk.RemovalPolicy.DESTROY
+   */
+  readonly removalPolicy?: cdk.RemovalPolicy;
 }
 
 /**
@@ -47,6 +54,11 @@ export class EventBridgeConstruct extends Construct {
       eventBusName: props.eventBusName,
       description: props.description,
     });
+
+    // 削除ポリシーの適用
+    this.eventBus.applyRemovalPolicy(
+      props.removalPolicy ?? cdk.RemovalPolicy.DESTROY
+    );
 
     // プロパティの設定
     this.eventBusArn = this.eventBus.eventBusArn;

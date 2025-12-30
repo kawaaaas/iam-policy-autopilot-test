@@ -359,6 +359,140 @@ CDK を使用する場合、以下のハイブリッドアプローチが推奨�
 
 ---
 
+## 疎通テスト結果
+
+### SimpleIamTestStack（simple-s3-reader）
+
+**テスト日時:** 2025-12-23T03:50:53.799Z
+
+**テスト方法:**
+
+```bash
+aws lambda invoke --function-name "SimpleIamTestStack-LambdaFunction9BE3F601-FsIlxZ7mXSHT" --payload '{}' --cli-binary-format raw-in-base64-out /tmp/simple-lambda-response.json
+```
+
+**結果:** ✅ 成功
+
+**レスポンス:**
+
+```json
+{
+  "statusCode": 200,
+  "body": {
+    "message": "ファイル読み込み成功",
+    "fileName": "sample.json",
+    "bucketName": "simpleiamteststack-s3storagebucketcf59ebf7-dbvjjuuolfwc",
+    "contentLength": 165,
+    "timestamp": "2025-12-23T03:50:53.799Z"
+  }
+}
+```
+
+**確認事項:**
+
+- S3 バケットからの `GetObject` 操作が正常に動作
+- IAM Policy Autopilot で生成したポリシーが適切に機能している
+
+---
+
+### StandardIamTestStack（sqs-dynamodb-processor）
+
+**テスト日時:** 2025-12-23T03:52:57.838Z
+
+**テスト方法:**
+
+```bash
+# SQS にテストメッセージを送信
+aws sqs send-message --queue-url "https://sqs.ap-northeast-1.amazonaws.com/602089200513/StandardIamTestStack-SQSQueue082E81F7-Qu52XqnUQ6ya" --message-body '{"testId": "test-001", "message": "疎通テスト", "timestamp": "2025-12-23T04:00:00Z"}'
+```
+
+**結果:** ✅ 成功
+
+**Lambda 実行ログ:**
+
+```
+INFO  SQS イベント受信 recordCount: 1
+INFO  メッセージ処理成功: ce687541-835e-415c-9767-fe2332ca3e97
+INFO  バッチ処理完了 successCount: 1, failureCount: 0
+```
+
+**DynamoDB 書き込み確認:**
+
+```json
+{
+  "messageId": "ce687541-835e-415c-9767-fe2332ca3e97",
+  "body": "{\"testId\": \"test-001\", \"message\": \"疎通テスト\", \"timestamp\": \"2025-12-23T04:00:00Z\"}",
+  "status": "processed",
+  "processedAt": "2025-12-23T03:52:57.838Z",
+  "sourceQueue": "StandardIamTestStack-SQSQueue082E81F7-Qu52XqnUQ6ya"
+}
+```
+
+**確認事項:**
+
+- SQS イベントソースマッピングが正常に動作（CDK 自動付与の権限）
+- DynamoDB への `PutItem` 操作が正常に動作（IAM Policy Autopilot 生成ポリシー）
+- 権限エラーなし
+
+---
+
+### ComplexIamTestStack（complex-bedrock-processor）
+
+**テスト日時:** 2025-12-23T03:58:42.080Z
+
+**テスト方法:**
+
+```bash
+aws lambda invoke --function-name "ComplexIamTestStack-LambdaFunction9BE3F601-2abuqNgpHI1x" --payload '{"inputText": "Hello, this is a test for Amazon Nova Lite model."}' --cli-binary-format raw-in-base64-out /tmp/complex-lambda-response.json
+```
+
+**結果:** ✅ 成功
+
+**レスポンス:**
+
+```json
+{
+  "statusCode": 200,
+  "body": {
+    "message": "処理が正常に完了しました",
+    "processingId": "296bec8c-7f69-48ac-885e-176d8f90d8dd",
+    "result": {
+      "inputText": "Hello, this is a test for Amazon Nova Lite model.",
+      "bedrockResponse": "このテキストは、Amazon Nova Liteモデルのテスト用のものだということを示しています。",
+      "s3Location": "s3://complexiamteststack-s3storagebucketcf59ebf7-jmehhmcmzis0/processing-results/2025-12-23/296bec8c-7f69-48ac-885e-176d8f90d8dd.json",
+      "eventId": "9df2e1a3-0f7b-5459-3f89-c132505542b9",
+      "webhookUrl": "https://example.com/webhook",
+      "timestamp": "2025-12-23T03:58:42.080Z"
+    }
+  }
+}
+```
+
+**処理フロー確認:**
+
+| ステップ | 処理内容                             | 結果    |
+| -------- | ------------------------------------ | ------- |
+| 1/4      | Secrets Manager からシークレット取得 | ✅ 成功 |
+| 2/4      | Bedrock でテキスト処理               | ✅ 成功 |
+| 3/4      | S3 に結果保存                        | ✅ 成功 |
+| 4/4      | EventBridge にイベント送信           | ✅ 成功 |
+
+**IAM 権限の検証結果:**
+
+| AWS サービス    | 操作             | 結果                      |
+| --------------- | ---------------- | ------------------------- |
+| Secrets Manager | `GetSecretValue` | ✅ 成功（KMS 復号含む）   |
+| Bedrock         | `InvokeModel`    | ✅ 成功（Nova Lite 使用） |
+| S3              | `PutObject`      | ✅ 成功（KMS 暗号化含む） |
+| EventBridge     | `PutEvents`      | ✅ 成功                   |
+
+**備考:**
+
+- 使用モデル: `amazon.nova-lite-v1:0`（オンデマンド課金）
+- 初回テスト時は Claude 3 Sonnet で Inference Profile 必須エラーが発生したため、Nova Lite に変更
+
+---
+
 ## 検証日時
 
-2024 年 12 月 23 日
+2025 年 12 月 23 日

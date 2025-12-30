@@ -15,6 +15,7 @@ export class SimpleIamTestStack extends cdk.Stack {
     const s3Storage = new S3StorageConstruct(this, "S3Storage", {
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // データデプロイメントコンストラクトの作成
